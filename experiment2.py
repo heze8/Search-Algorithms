@@ -4,11 +4,11 @@ import heapq
 import copy
 import random
 
-
 class Puzzle(object):
     @staticmethod
     def heuristic_function_uninformed(state, goal_state): #estimated cost to get from the node to the goal
         return 0
+
     @staticmethod
     def heuristic_function_misplaced(state, goal_state): #estimated cost to get from the node to the goal
         if state == goal_state:
@@ -37,7 +37,7 @@ class Puzzle(object):
         return h
 
     @staticmethod
-    def heuristic_function_caleb(original_state, goal_state): #estimated cost to get from the node to the goal
+    def heuristic_function_swapped_manhatten(original_state, goal_state): #estimated cost to get from the node to the goal
         state = copy.deepcopy(original_state)
         if state == goal_state:
           return 0
@@ -74,50 +74,10 @@ class Puzzle(object):
                     state[row][col] = state[i][j] 
                     state[i][j] = goal_state[i][j]
 
-                    h += manhatten(i, j, state)
+                    h += manhatten(row, col, state)
 
         return h
 
-    @staticmethod
-    def heuristic_function_caleb2(original_state, goal_state): #estimated cost to get from the node to the goal
-        state = copy.deepcopy(original_state)
-        if state == goal_state:
-          return 0
-        h = 0
-        length = len(state)
-
-        #Do a swap
-        def search(matrix, value): # return a pair of i j values
-            length = len(matrix)
-            for i in range(0, length):
-                for j in range(0, length):
-                    if matrix[i][j] == value:
-                        return [i, j]
-
-        def manhatten(i, j, state):
-            h = 0
-            if state[i][j] != 0: # and state[i][j] != goal_state[i][j]: 
-                goal_row = int((state[i][j] - 1) / length) 
-                goal_col = (state[i][j] - 1) % length
-                h = (abs(i - goal_row) + abs(j - goal_col))
-            
-            return h
-
-        
-        # for i in range(1, length * length):
-        #     if search(state, value) goal_state[i][j]:
-        #         #find actual place that it should go
-        #         pos = search(state, state[i][j])
-        #         row = pos[0]
-        #         col = pos[1]
-        #         h += 1
-        #         #swap
-        #         state[row][col] = state[i][j] 
-        #         state[i][j] = goal_state[i][j]
-
-        #         h += manhatten(row, col, state)
-
-        return h
 
     class Experimental_evaluation():
         def __init__(self):
@@ -139,8 +99,29 @@ class Puzzle(object):
             else:
                 return None
             
+    class Node(object):
+        def __init__(self, state, g, myhn):
+            self.state = state
+            self.g = g
+            self.heuristic_function = self.get_heuristic(myhn)
+            self.h = self.heuristic_function(state, goal_state) #use of heuristic here
+            self.f = self.g + self.h
+            self.parent = None
+            self.prev_action = None
+
+        def __lt__(self, node):
+            return self.f < node.f
+
+        def get_heuristic(self, h):
+            if h == 0:
+                return Puzzle.heuristic_function_uninformed
+            if h == 1:
+                return Puzzle.heuristic_function_misplaced
+            if h == 2:
+                return Puzzle.heuristic_function_swapped_manhatten
+            return Puzzle.heuristic_function_manhatten
        
-    def __init__(self, init_state, goal_state):
+    def __init__(self, init_state, goal_state, heuristic_function_num):
         # you may add more attributes if you think is useful
         self.init_state = init_state
         self.goal_state = goal_state
@@ -148,18 +129,9 @@ class Puzzle(object):
         self.successors = []
         self.memory = set()
         self.experiment = self.Experimental_evaluation()
+        self.hn = heuristic_function_num
         
-    class Node():
-        def __init__(self, state, g):
-            self.state = state
-            self.g = g
-            self.h = Puzzle.heuristic_function_uninformed(state, goal_state) #use of heuristic here
-            self.f = self.g + self.h
-            self.parent = None
-            self.prev_action = None
 
-        def __lt__(self, node):
-            return self.f < node.f
 
     def find_empty(self, matrix): # return a pair of i j values
         length = len(matrix)
@@ -203,7 +175,7 @@ class Puzzle(object):
 
     def make_init_node(self, init_state):
         self.memory.add(str(init_state))
-        init_node = self.Node(init_state, 0)
+        init_node = self.Node(init_state, 0, self.hn)
         heapq.heapify(self.successors)
         heapq.heappush(self.successors, init_node)
         return init_node
@@ -251,7 +223,7 @@ class Puzzle(object):
         if new_state == node.state:
           return
 
-        new_node = self.Node(new_state, node.g + 1)
+        new_node = self.Node(new_state, node.g + 1, self.hn)
         new_node.parent = node
         new_node.prev_action = action
         return new_node
@@ -307,7 +279,7 @@ class Puzzle(object):
         
     def solve(self):
         if not self.is_solvable(self.init_state):
-            return ['UNSOLVABLE_F']
+            return ['UNSOLVABLE']
         return self.best_first_search(self.make_init_node(self.init_state), 70)
 
     
@@ -320,24 +292,24 @@ if __name__ == "__main__":
     # argv[1] represents name of input file
     # argv[2] represents name of destination output file
     sys.argv = []
-    sys.argv.append("CS3243_p1_99_2.py")
-    input_file = "input_3"
+    sys.argv.append("CS3243_P1_20_4.py")
+    input_file = "NIL"
     sys.argv.append(input_file + ".txt")
     sys.argv.append("experimental_output.txt")
 
-    if len(sys.argv) != 3:
-        raise ValueError("Wrong number of arguments!")
+    # if len(sys.argv) != 3:
+    #     raise ValueError("Wrong number of arguments!")
 
-    try:
-        f = open(sys.argv[1], 'r')
-    except IOError:
-        raise IOError("Input file not found!")
+    # try:
+    #     f = open(sys.argv[1], 'r')
+    # except IOError:
+    #     raise IOError("Input file not found!")
 
-    lines = f.readlines()
+    # lines = f.readlines()
     
     
     # n = num rows in input file
-    n = len(lines)
+    n = 5
     # max_num = n to the power of 2 - 1
     max_num = n ** 2 - 1
 
@@ -413,6 +385,7 @@ if __name__ == "__main__":
             if action == "DOWN":
                 return "UP"
 
+        #range of solution space here
         estimate_d = random.randrange(2, 15)
         
         state = copy.deepcopy(goal_state)
@@ -468,15 +441,29 @@ if __name__ == "__main__":
                 self.store[d] = data
         
         def retrieve(self):
-            for d,data in sorted(self.store.items()):
-                if d != 1:
-                    print (d, "=>", data.retrieve())
+            for d, data in sorted(self.store.items()):
+                    with open(sys.argv[2], 'a') as f:
+                        f.write(str(d) + " => " + str(data.retrieve()) +'\n')
+                        f.close()
 
     table = Table()
-    for i in range(2000):
+    #Set number of problems generated here
+    number_of_test = 50 #2000
+
+    heuristics_list = ["uninformed", "misplaced", "swapped_manhatten", "manhatten"]
+    
+    #Set heuristic here, 0 for uninformed, 1 for misplaced, 2 for swapped_manhatten, 3 for manhatten
+    heuristic_used = 3
+   
+    with open(sys.argv[2], 'w') as f:
+        f.write("Experimental Results for " + heuristics_list[heuristic_used] + " :" +'\n')
+        f.write("format is: " + '\n' + "solution depth => average f: , number of nodes n, effective branching factor b" +'\n')
+        f.close()
+
+    for i in range(number_of_test):
         random_puzzle = generate_random_problem()
         
-        puzzle = Puzzle(random_puzzle, goal_state)
+        puzzle = Puzzle(random_puzzle, goal_state, heuristic_used)
         puzzle.solve()
         ans = puzzle.evaluate_heuristic()
         
@@ -488,7 +475,7 @@ if __name__ == "__main__":
         
     table.retrieve()
 
-    #with open(sys.argv[2], 'a') as f:
+    #=with open(sys.argv[2], 'a') as f:
         #for answer in ans:
            # f.write(str(answer)+'\n')
 
